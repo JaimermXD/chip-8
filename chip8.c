@@ -20,6 +20,9 @@ uint32_t scale;
 SDL_Window *window;
 SDL_Renderer *renderer;
 
+// Emulator
+bool running;
+
 /* -------------------------------------------------------------------------- */
 /*                                   CONFIG                                   */
 /* -------------------------------------------------------------------------- */
@@ -81,6 +84,37 @@ bool init_sdl() {
 }
 
 /**
+ * SDL event handler
+*/
+void handle_events() {
+    SDL_Event event;
+
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_QUIT:
+                // Quit emulator
+                running = false;
+                break;
+            
+            case SDL_KEYDOWN:
+                switch (event.key.keysym.scancode) {
+                    case SDL_SCANCODE_ESCAPE:
+                        // Quit emulator (ESC key)
+                        running = false;
+                        break;
+
+                    default:
+                        break;
+                }
+                break;
+            
+            default:
+                break;
+        }
+    }
+}
+
+/**
  * Final SDL cleanup
 */
 void clean_sdl() {
@@ -103,7 +137,14 @@ int main(int argc, char **argv) {
     if (!set_config(argc, argv)) return EXIT_FAILURE;
     if (!init_sdl()) return EXIT_FAILURE;
 
-    // TODO: main loop
+    // Main loop
+    running = true;
+    while (running) {
+        handle_events();        
+
+        // TODO: execute instructions
+        // TODO: cap framerate
+    }
 
     clean_sdl();
 
