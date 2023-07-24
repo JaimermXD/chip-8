@@ -133,6 +133,15 @@ void handle_events() {
 }
 
 /**
+ * Cap framerate to 60 FPS
+ * @param diff Main loop execution time difference
+*/
+void cap_framerate(uint64_t diff) {
+    double elapsed = diff / (double)SDL_GetPerformanceFrequency() * 1000.0;
+    SDL_Delay(SDL_floor(16.6667 - elapsed));
+}
+
+/**
  * Final SDL cleanup
 */
 void clean_sdl() {
@@ -176,8 +185,11 @@ int main(int argc, char **argv) {
 
         if (state == PAUSED) continue;
 
+        uint64_t start = SDL_GetPerformanceCounter();
         // TODO: execute instructions
-        // TODO: cap framerate
+        uint64_t end = SDL_GetPerformanceCounter();
+
+        cap_framerate(end - start);        
     }
 
     clean_sdl();
