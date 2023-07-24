@@ -11,6 +11,13 @@
 /*                                    DATA                                    */
 /* -------------------------------------------------------------------------- */
 
+// Types
+typedef enum {
+    RUNNING,
+    PAUSED,
+    QUIT
+} state_t;
+
 // Config
 uint32_t width;
 uint32_t height;
@@ -21,7 +28,7 @@ SDL_Window *window;
 SDL_Renderer *renderer;
 
 // Emulator
-bool running;
+state_t state;
 
 /* -------------------------------------------------------------------------- */
 /*                                   CONFIG                                   */
@@ -93,14 +100,25 @@ void handle_events() {
         switch (event.type) {
             case SDL_QUIT:
                 // Quit emulator
-                running = false;
+                state = QUIT;
                 break;
             
             case SDL_KEYDOWN:
                 switch (event.key.keysym.scancode) {
                     case SDL_SCANCODE_ESCAPE:
                         // Quit emulator (ESC key)
-                        running = false;
+                        state = QUIT;
+                        break;
+                    
+                    case SDL_SCANCODE_SPACE:
+                        // Toggle pause
+                        if (state == PAUSED) {
+                            state = RUNNING;
+                            printf("[INFO] Unpaused\n");
+                        } else {
+                            state = PAUSED;
+                            printf("[INFO] Paused\n");
+                        }
                         break;
 
                     default:
@@ -124,6 +142,20 @@ void clean_sdl() {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                                  EMULATOR                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Initialize CHIP-8 emulator and set up initial state
+ * @return Whether initialization was successful
+*/
+bool init_emulator() {
+    state = RUNNING;
+
+    return true;
+}
+
+/* -------------------------------------------------------------------------- */
 /*                                    MAIN                                    */
 /* -------------------------------------------------------------------------- */
 
@@ -135,12 +167,14 @@ void clean_sdl() {
 */
 int main(int argc, char **argv) {
     if (!set_config(argc, argv)) return EXIT_FAILURE;
+    if (!init_emulator()) return EXIT_FAILURE;
     if (!init_sdl()) return EXIT_FAILURE;
 
     // Main loop
-    running = true;
-    while (running) {
-        handle_events();        
+    while (state != QUIT) {
+        handle_events();
+
+        if (state == PAUSED) continue;
 
         // TODO: execute instructions
         // TODO: cap framerate
