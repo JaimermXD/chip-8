@@ -268,6 +268,22 @@ void execute_instruction() {
     // Execute instruction
     debug_print("[DEBUG] Opcode=0x%04X @ PC=0x%04X - ", opcode, PC - 2);
     switch (opcode >> 12) {
+        case 0x0:
+            switch (NN) {
+                case 0xE0:
+                    // 00E0: clear the screen
+                    debug_print("Clear the screen\n");
+                    for (int i = 0; i < sizeof(display); i++) {
+                        display[i] = false;
+                    }
+                    break;
+                
+                default:
+                    debug_print("Unimplemented opcode\n");
+                    break;
+            }
+            break;
+
         default:
             debug_print("Unimplemented opcode\n");
             break;
