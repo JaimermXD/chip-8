@@ -32,6 +32,8 @@ typedef enum {
 uint32_t width;
 uint32_t height;
 uint32_t scale;
+uint32_t bg_color;
+uint32_t fg_color;
 
 // SDL
 SDL_Window *window;
@@ -47,6 +49,7 @@ uint16_t PC;
 uint16_t I;
 uint8_t DT;
 uint8_t ST;
+bool draw_flag;
 bool display[64 * 32];
 bool keypad[16];
 char *rom;
@@ -87,6 +90,8 @@ bool set_config(int argc, char **argv) {
     width = 64;
     height = 32;
     scale = 15;
+    bg_color = 0x000000FF;
+    fg_color = 0xFFFFFFFF;
 
     // TODO: Override from args
     for (int i = 0; i < argc; i++) {
@@ -175,6 +180,38 @@ void handle_events() {
 }
 
 /**
+ * Draw display contents to the screen
+*/
+void update_screen() {
+    SDL_Rect rect = { .x = 0, .y = 0, .w = scale, .h = scale };
+
+    // Extract background color components
+    const uint8_t bg_r = (bg_color >> 24) & 0xFF;
+    const uint8_t bg_g = (bg_color >> 16) & 0xFF;
+    const uint8_t bg_b = (bg_color >>  8) & 0xFF;
+    const uint8_t bg_a = (bg_color >>  0) & 0xFF;
+
+    // Extract foreground color components
+    const uint8_t fg_r = (fg_color >> 24) & 0xFF;
+    const uint8_t fg_g = (fg_color >> 16) & 0xFF;
+    const uint8_t fg_b = (fg_color >>  8) & 0xFF;
+    const uint8_t fg_a = (fg_color >>  0) & 0xFF;
+
+    // Loop through display pixels
+    for (uint32_t i = 0; i < sizeof(display); i++) {
+        rect.x = (i % width) * scale;
+        rect.y = (i / width) * scale;
+
+        if (display[i]) SDL_SetRenderDrawColor(renderer, fg_r, fg_g, fg_b, fg_a);
+        else SDL_SetRenderDrawColor(renderer, bg_r, bg_g, bg_b, bg_a);
+
+        SDL_RenderFillRect(renderer, &rect);
+    }
+
+    SDL_RenderPresent(renderer);
+}
+
+/**
  * Cap framerate to 60 FPS
  * @param diff Main loop execution time difference
 */
@@ -254,6 +291,9 @@ bool init_emulator(char *rom_name) {
  * Execute current instruction
 */
 void execute_instruction() {
+    // Reset draw flag
+    draw_flag = false;
+
     // Fetch current opcode and increment PC for next one
     uint16_t opcode = (memory[PC] << 8) | memory[PC + 1];
     PC += 2;
@@ -307,6 +347,39 @@ void execute_instruction() {
             debug_print("Set I to NNN=0x%03X\n", NNN);
             I = NNN;
             break;
+        
+        case 0xD:
+            // DXYN: draw N-height sprite at coords (VX, VY);
+            // set VF to 1 if any pixel is turned off, and to 0 otherwise
+            debug_print("Draw %u-height sprite at (V%01X, V%01X) from I 0x%04X\n", N, X, Y, I);
+
+            draw_flag = true;
+
+            uint8_t x = V[X] % width;
+            uint8_t y = V[Y] % height;
+            const uint8_t original_x = x;
+            
+            V[0xF] = 0;
+
+            for (uint8_t i = 0; i < N; i++) {
+                const uint8_t sprite_row = memory[I + i];
+                x = original_x;
+
+                for (int8_t j = 7; j >= 0; j--) {
+                    const bool sprite_bit = sprite_row & (1 << j);
+                    bool *display_pixel = &display[y * width + x];
+
+                    if (sprite_bit && *display_pixel) V[0xF] = 1;
+
+                    *display_pixel ^= sprite_bit;
+
+                    if (++x >= width) break;
+                }
+
+                if (++y >= height) break;
+            }
+
+            break;
 
         default:
             debug_print("Unimplemented opcode\n");
@@ -342,6 +415,7 @@ int main(int argc, char **argv) {
 
         uint64_t start = SDL_GetPerformanceCounter();
         execute_instruction();
+        if (draw_flag) update_screen();
         uint64_t end = SDL_GetPerformanceCounter();
 
         cap_framerate(end - start);        
