@@ -21,41 +21,8 @@
 /*                                    DATA                                    */
 /* -------------------------------------------------------------------------- */
 
-// Types
-typedef enum {
-    RUNNING,
-    PAUSED,
-    QUIT
-} state_t;
-
-// Config
-uint32_t width;
-uint32_t height;
-uint32_t scale;
-uint32_t bg_color;
-uint32_t fg_color;
-
-// SDL
-SDL_Window *window;
-SDL_Renderer *renderer;
-
-// Emulator
-state_t state;
-uint8_t memory[4096];
-uint8_t V[16];
-uint16_t stack[16];
-uint8_t sp;
-uint16_t PC;
-uint16_t I;
-uint8_t DT;
-uint8_t ST;
-bool draw_flag;
-bool display[64 * 32];
-bool keypad[16];
-char *rom;
-
 // Constants
-const uint16_t entry_point = 0x200;
+const uint32_t entry_point = 0x200;
 const uint8_t font[] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -75,26 +42,50 @@ const uint8_t font[] = {
     0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 };
 
+// Types
+typedef enum {
+    RUNNING,
+    PAUSED,
+    QUIT
+} state_t;
+
+// Config
+uint32_t width = 64;
+uint32_t height = 32;
+uint32_t scale = 20;
+uint32_t bg_color = 0x00000000;
+uint32_t fg_color = 0xFFFFFFFF;
+
+// SDL
+SDL_Window *window = NULL;
+SDL_Renderer *renderer = NULL;
+
+// Emulator
+state_t state = RUNNING;
+uint8_t memory[4096] = {0};
+uint16_t stack[16] = {0};
+uint8_t sp = 0;
+uint8_t V[16] = {0};
+uint16_t PC = entry_point;
+uint16_t I = 0;
+uint8_t dt = 0;
+uint8_t st = 0;
+bool draw_flag = false;
+bool display[64 * 32] = {false};
+bool keypad[16] = {false};
+char *rom = NULL;
+
 /* -------------------------------------------------------------------------- */
 /*                                   CONFIG                                   */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Set config defaults and override from args
- * @param argc Number of args
- * @param argv Args list
+ * Set up emulator config from args
  * @return Whether setup was successful
 */
 bool set_config(int argc, char **argv) {
-    // Set defaults
-    width = 64;
-    height = 32;
-    scale = 15;
-    bg_color = 0x000000FF;
-    fg_color = 0xFFFFFFFF;
-
-    // TODO: Override from args
-    for (int i = 0; i < argc; i++) {
+    // Override defaults
+    for (int i = 1; i < argc; i++) {
         (void)argv[i];
     }
 
@@ -106,12 +97,12 @@ bool set_config(int argc, char **argv) {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Initialize SDL susbsytems and components
+ * Initialize SDL subsystems and components
  * @return Whether initialization was successful
 */
 bool init_sdl() {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
-        fprintf(stderr, "Unable to initialize SDL: %s\n", SDL_GetError());
+        fprintf(stderr, "[ERROR] Unable to initialize SDL: %s\n", SDL_GetError());
         return false;
     }
 
@@ -124,13 +115,13 @@ bool init_sdl() {
         0
     );
     if (!window) {
-        fprintf(stderr, "Unable to create window: %s\n", SDL_GetError());
+        fprintf(stderr, "[ERROR] Unable to create window: %s\n", SDL_GetError());
         return false;
     }
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
-        fprintf(stderr, "Unable to create renderer: %s\n", SDL_GetError());
+        fprintf(stderr, "[ERROR] Unable to create renderer: %s\n", SDL_GetError());
         return false;
     }
 
@@ -221,7 +212,7 @@ void cap_framerate(uint64_t diff) {
 }
 
 /**
- * Final SDL cleanup
+ * Destroy SDL components and quit SDL
 */
 void clean_sdl() {
     SDL_DestroyRenderer(renderer);
@@ -242,25 +233,25 @@ bool load_rom(char *rom_name) {
     // Open ROM file
     FILE *f = fopen(rom_name, "rb");
     if (!f) {
-        fprintf(stderr, "Unable to open ROM file '%s'\n", rom_name);
+        fprintf(stderr, "[ERROR] ROM '%s' not found\n", rom_name);
         return false;
     }
 
     // Get size
     fseek(f, 0, SEEK_END);
-    size_t rom_size = ftell(f);
-    size_t max_size = sizeof(memory) - entry_point;
+    const size_t rom_size = ftell(f);
+    const size_t max_size = sizeof(memory) - entry_point;
     rewind(f);
 
-    // Check size
+    // Check if size is valid
     if (rom_size > max_size) {
-        fprintf(stderr, "ROM file '%s' is too large\n", rom_name);
+        fprintf(stderr, "[ERROR] ROM '%s' is too large\n", rom_name);
         return false;
     }
 
-    // Load ROM
+    // Read into memory
     if (fread(&memory[entry_point], rom_size, 1, f) != 1) {
-        fprintf(stderr, "Unable to read ROM file '%s' into memory\n", rom_name);
+        fprintf(stderr, "[ERROR] Unable to read ROM '%s' into memory\n", rom_name);
         return false;
     }
     rom = rom_name;
@@ -272,14 +263,11 @@ bool load_rom(char *rom_name) {
 }
 
 /**
- * Initialize CHIP-8 emulator and set up initial state
+ * Initialize CHIP-8 emulator
+ * @param rom_name ROM file name
  * @return Whether initialization was successful
 */
 bool init_emulator(char *rom_name) {
-    // Set defaults
-    state = RUNNING;
-    PC = entry_point;
-
     // Load font
     memcpy(&memory[0], font, sizeof(font));
 
@@ -288,22 +276,22 @@ bool init_emulator(char *rom_name) {
 }
 
 /**
- * Execute current instruction
+ * Emulate current instruction
 */
-void execute_instruction() {
+void emulate_instruction() {
     // Reset draw flag
     draw_flag = false;
 
     // Fetch current opcode and increment PC for next one
-    uint16_t opcode = (memory[PC] << 8) | memory[PC + 1];
+    const uint16_t opcode = (memory[PC] << 8) | memory[PC + 1];
     PC += 2;
 
     // Decode instruction
-    uint16_t NNN = opcode & 0x0FFF;
-    uint8_t NN = opcode & 0x00FF;
-    uint8_t N = opcode & 0x000F;
-    uint8_t X = (opcode & 0x0F00) >> 8;
-    uint8_t Y = (opcode & 0x00F0) >> 4;
+    const uint16_t NNN = opcode & 0x0FFF;
+    const uint8_t NN = opcode & 0x00FF;
+    const uint8_t N = opcode & 0x000F;
+    const uint8_t X = (opcode & 0x0F00) >> 8;
+    const uint8_t Y = (opcode & 0x00F0) >> 4;
 
     // Execute instruction
     debug_print("[DEBUG] Opcode=0x%04X @ PC=0x%04X - ", opcode, PC - 2);
@@ -313,9 +301,7 @@ void execute_instruction() {
                 case 0xE0:
                     // 00E0: clear the screen
                     debug_print("Clear the screen\n");
-                    for (size_t i = 0; i < sizeof(display); i++) {
-                        display[i] = false;
-                    }
+                    memset(&display[0], false, sizeof(display));
                     break;
                 
                 default:
@@ -414,7 +400,7 @@ int main(int argc, char **argv) {
         if (state == PAUSED) continue;
 
         uint64_t start = SDL_GetPerformanceCounter();
-        execute_instruction();
+        emulate_instruction();
         if (draw_flag) update_screen();
         uint64_t end = SDL_GetPerformanceCounter();
 
