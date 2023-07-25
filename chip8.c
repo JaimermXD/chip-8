@@ -63,6 +63,7 @@ uint32_t scale = 15;
 uint32_t bg_color = 0x00000000;
 uint32_t fg_color = 0xFFFFFFFF;
 bool pixel_outline = false;
+uint32_t insts_per_sec = 700;
 
 // SDL
 SDL_Window *window = NULL;
@@ -303,9 +304,6 @@ bool init_emulator(char *rom_name) {
  * Emulate current instruction
 */
 void emulate_instruction() {
-    // Reset draw flag
-    draw_flag = false;
-
     // Fetch current opcode and increment PC for next one
     const uint16_t opcode = (memory[PC] << 8) | memory[PC + 1];
     PC += 2;
@@ -561,11 +559,20 @@ int main(int argc, char **argv) {
         if (state == PAUSED) continue;
 
         uint64_t start = SDL_GetPerformanceCounter();
-        emulate_instruction();
-        if (draw_flag) update_screen();
+        // Execute number of instructions every second at 60 Hz
+        for (uint32_t i = 0; i < insts_per_sec / 60; i++) {
+            emulate_instruction();
+        }
         uint64_t end = SDL_GetPerformanceCounter();
 
         cap_framerate(end - start);
+
+        if (draw_flag) {
+            update_screen();
+
+            // Reset draw flag
+            draw_flag = false;
+        }
     }
 
     clean_sdl();
