@@ -42,6 +42,12 @@ const uint8_t font[] = {
     0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
     0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 };
+const SDL_Scancode keymappings[] = {
+    SDL_SCANCODE_1, SDL_SCANCODE_2, SDL_SCANCODE_3, SDL_SCANCODE_4,
+    SDL_SCANCODE_Q, SDL_SCANCODE_W, SDL_SCANCODE_E, SDL_SCANCODE_R,
+    SDL_SCANCODE_A, SDL_SCANCODE_S, SDL_SCANCODE_D, SDL_SCANCODE_F,
+    SDL_SCANCODE_Z, SDL_SCANCODE_X, SDL_SCANCODE_C, SDL_SCANCODE_V
+};
 
 // Types
 typedef enum {
@@ -137,6 +143,8 @@ void handle_events() {
     SDL_Event event;
 
     while (SDL_PollEvent(&event)) {
+        const uint8_t *keypad_state = SDL_GetKeyboardState(NULL);
+
         switch (event.type) {
             case SDL_QUIT:
                 // Quit emulator
@@ -167,6 +175,11 @@ void handle_events() {
                 break;
             
             default:
+                // Keypad mappings
+                for (int i = 0; i < 16; i++) {
+                    keypad[i] = keypad_state[keymappings[i]];
+                }
+
                 break;
         }
     }
@@ -456,7 +469,7 @@ void emulate_instruction() {
             break;
         
         case 0xC:
-            // CXNN: set VX to rand() AND NN
+            ;// CXNN: set VX to rand() AND NN
             uint8_t num = rand() % 256;
             debug_print("Set VX to rand()=0x%02X AND NN=0x%02X (0x%02X)\n", num, NN, num & NN);
             V[X] = num & NN;
