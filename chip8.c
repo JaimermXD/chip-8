@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include <SDL2/SDL.h>
 
@@ -275,6 +276,9 @@ bool load_rom(char *rom_name) {
  * @return Whether initialization was successful
 */
 bool init_emulator(char *rom_name) {
+    // Initialize random number generator
+    srand(time(NULL));
+
     // Load font
     memcpy(&memory[0], font, sizeof(font));
 
@@ -449,6 +453,13 @@ void emulate_instruction() {
             // BNNN: jump to address NNN + V0
             debug_print("Jump to address NNN=0x%03X + V0 (0x%04X)\n", NNN, NNN + V[0x0]);
             PC = NNN + V[0x0];
+            break;
+        
+        case 0xC:
+            // CXNN: set VX to rand() AND NN
+            uint8_t num = rand() % 256;
+            debug_print("Set VX to rand()=0x%02X AND NN=0x%02X (0x%02X)\n", num, NN, num & NN);
+            V[X] = num & NN;
             break;
         
         case 0xD:
