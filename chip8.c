@@ -77,8 +77,8 @@ uint8_t sp = 0;
 uint8_t V[16] = {0};
 uint16_t PC = entry_point;
 uint16_t I = 0;
-uint8_t dt = 0;
-uint8_t st = 0;
+uint8_t DT = 0;
+uint8_t ST = 0;
 bool draw_flag = false;
 bool display[64 * 32] = {false}; // TODO: make display depend on width and height
 bool keypad[16] = {false};
@@ -238,11 +238,11 @@ void cap_framerate(uint64_t diff) {
 */
 void update_timers() {
     // Delay timer
-    if (dt > 0) dt--;
+    if (DT > 0) DT--;
 
     // Sound timer
-    if (st > 0) {
-        st--;
+    if (ST > 0) {
+        ST--;
         // TODO: add sound
     }
 }
@@ -536,6 +536,84 @@ void emulate_instruction() {
 
                 default:
                     debug_print("Unimplemented opcode\n");
+                    break;
+            }
+            break;
+        
+        case 0xF:
+            switch (NN) {
+                case 0x07:
+                    // FX07: set VX to DT
+                    debug_print("Set V%01X to DT=0x%02X\n", X, DT);
+                    V[X] = DT;
+                    break;
+                
+                case 0x0A:
+                    // FX0A: wait for keypress; store it in VX
+                    debug_print("Wait for keypress and store it in V%01X\n", X);
+
+                    PC -= 2;
+
+                    for (int i = 0; i < 16; i++) {
+                        if (keypad[i]) {
+                            V[X] = i;
+                            PC += 2;
+                            break;
+                        }
+                    }
+
+                    break;
+                
+                case 0x15:
+                    // FX15: set DT to VX
+                    debug_print("Set DT to V%01X\n", X);
+                    DT = V[X];
+                    break;
+                
+                case 0x18:
+                    // FX18: set ST to VX
+                    debug_print("Set ST to V%01X\n", X);
+                    ST = V[X];
+                    break;
+                
+                case 0x1E:
+                    // FX1E: add VX to I
+                    debug_print("Add V%01X to I=0x%04X\n", X, I);
+                    I += V[X];
+                    break;
+                
+                case 0x29:
+                    // FX29: set I to address of sprite for char in VX
+                    debug_print("Set I to sprite adress in V%01X (0x%04X)\n", X, V[X] * 5);
+                    I = V[X] * 5;
+                    break;
+                
+                case 0x33:
+                    // FX33: store BCD representation of VX at locations I, I+1 and I+2
+                    debug_print("Store BCD representation of V%01X at I=%04X, I+1 and I+2\n", X, I);
+                    memory[I] = V[X] / 100;
+                    memory[I + 1] = (V[X] % 100) / 10;
+                    memory[I + 2] = V[X] % 10;
+                    break;
+                
+                case 0x55:
+                    // FX55: store from V0 to VX in memory starting at address I
+                    debug_print("Store from V0 to V%01X in memory starting at I=0x%04X\n", X, I);
+                    for (int i = 0; i <= X; i++) {
+                        memory[I + i] = V[i];
+                    }
+                    break;
+
+                case 0x65:
+                    // FX65: fill from V0 to VX from memory starting at address I
+                    debug_print("Fill from V0 to V%01X from memory starting at I=0x%04X\n", X, I);
+                    for (int i = 0; i <= X; i++) {
+                        V[i] = memory[I + i];
+                    }
+                    break;
+
+                default:
+                    debug_print("Unimplement opcode\n");
                     break;
             }
             break;
