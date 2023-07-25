@@ -101,7 +101,7 @@ bool set_config(int argc, char **argv) {
  * @return Whether initialization was successful
 */
 bool init_sdl() {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0) {
         fprintf(stderr, "[ERROR] Unable to initialize SDL: %s\n", SDL_GetError());
         return false;
     }
@@ -208,7 +208,8 @@ void update_screen() {
 */
 void cap_framerate(uint64_t diff) {
     double elapsed = diff / (double)SDL_GetPerformanceFrequency() * 1000.0;
-    SDL_Delay(SDL_floor(16.6667 - elapsed));
+    double delay = 16.6667 > elapsed ? SDL_floor(16.6667 - elapsed) : 0;
+    SDL_Delay(delay);
 }
 
 /**
@@ -404,7 +405,7 @@ int main(int argc, char **argv) {
         if (draw_flag) update_screen();
         uint64_t end = SDL_GetPerformanceCounter();
 
-        cap_framerate(end - start);        
+        cap_framerate(end - start);
     }
 
     clean_sdl();
