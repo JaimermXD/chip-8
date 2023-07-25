@@ -187,15 +187,57 @@ void clean_sdl() {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Load ROM file into memory
+ * @param rom_name ROM file name
+ * @return Whether loading was successful
+*/
+bool load_rom(char *rom_name) {
+    // Open ROM file
+    FILE *f = fopen(rom_name, "rb");
+    if (!f) {
+        fprintf(stderr, "Unable to open ROM file '%s'\n", rom_name);
+        return false;
+    }
+
+    // Get size
+    fseek(f, 0, SEEK_END);
+    size_t rom_size = ftell(f);
+    size_t max_size = sizeof(memory) - entry_point;
+    rewind(f);
+
+    // Check size
+    if (rom_size > max_size) {
+        fprintf(stderr, "ROM file '%s' is too large\n", rom_name);
+        return false;
+    }
+
+    // Load ROM
+    if (fread(&memory[entry_point], rom_size, 1, f) != 1) {
+        fprintf(stderr, "Unable to read ROM file '%s' into memory\n", rom_name);
+        return false;
+    }
+    rom = rom_name;
+
+    // Close ROM file
+    fclose(f);
+
+    return true;
+}
+
+/**
  * Initialize CHIP-8 emulator and set up initial state
  * @return Whether initialization was successful
 */
 bool init_emulator(char *rom_name) {
+    // Set defaults
     state = RUNNING;
     PC = entry_point;
-    rom = rom_name;
 
-    return true;
+    // Load font
+    memcpy(&memory[0], font, sizeof(font));
+
+    // Load ROM file
+    return load_rom(rom_name);
 }
 
 /* -------------------------------------------------------------------------- */
