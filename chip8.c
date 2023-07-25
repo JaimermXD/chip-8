@@ -336,6 +336,24 @@ void emulate_instruction() {
             PC = NNN;
             break;
         
+        case 0x3:
+            // 3XNN: skip next instruction if VX == NN
+            debug_print("Skip next instruction if V%01X equals NN=0x%02X (%d)\n", X, NN, V[X] == NN);
+            if (V[X] == NN) PC += 2;
+            break;
+        
+        case 0x4:
+            // 4XNN: skip next instruction if VX != NN
+            debug_print("Skip next instruction if V%01X doesn't equal NN=0x%02X (%d)\n", X, NN, V[X] != NN);
+            if (V[X] != NN) PC += 2;
+            break;
+        
+        case 0x5:
+            // 5XY0: skip next instruction if VX == VY
+            debug_print("Skip next instruction if V%01X equals V%01X (%d)\n", X, Y, V[X] == V[Y]);
+            if (V[X] == V[Y]) PC += 2;
+            break;
+        
         case 0x6:
             // 6XNN: set VX to NN
             debug_print("Set V%01X to NN=0x%02X\n", X, NN);
@@ -346,6 +364,12 @@ void emulate_instruction() {
             // 7XNN: add NN to VX
             debug_print("Add NN=0x%02X to V%01X\n", NN, X);
             V[X] += NN;
+            break;
+        
+        case 0x9:
+            // 9XY0: skip next instruction if VX != VY
+            debug_print("Skip next instruction if V%01X doesn't equal V%01X (%d)\n", X, Y, V[X] != V[Y]);
+            if (V[X] != V[Y]) PC += 2;
             break;
         
         case 0xA:
