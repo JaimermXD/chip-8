@@ -52,9 +52,10 @@ typedef enum {
 // Config
 uint32_t width = 64;
 uint32_t height = 32;
-uint32_t scale = 20;
+uint32_t scale = 15;
 uint32_t bg_color = 0x00000000;
 uint32_t fg_color = 0xFFFFFFFF;
+bool pixel_outline = false;
 
 // SDL
 SDL_Window *window = NULL;
@@ -71,7 +72,7 @@ uint16_t I = 0;
 uint8_t dt = 0;
 uint8_t st = 0;
 bool draw_flag = false;
-bool display[64 * 32] = {false};
+bool display[64 * 32] = {false}; // TODO: make display depend on width and height
 bool keypad[16] = {false};
 char *rom = NULL;
 
@@ -197,6 +198,11 @@ void update_screen() {
         else SDL_SetRenderDrawColor(renderer, bg_r, bg_g, bg_b, bg_a);
 
         SDL_RenderFillRect(renderer, &rect);
+
+        if (pixel_outline) {
+            SDL_SetRenderDrawColor(renderer, bg_r, bg_g, bg_b, bg_a);
+            SDL_RenderDrawRect(renderer, &rect);
+        }
     }
 
     SDL_RenderPresent(renderer);
