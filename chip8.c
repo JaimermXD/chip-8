@@ -311,6 +311,12 @@ void emulate_instruction() {
                     memset(&display[0], false, sizeof(display));
                     break;
                 
+                case 0xEE:
+                    // 00EE: return from subroutine
+                    debug_print("Return from subroutine to PC=0x%04X\n", stack[sp - 1]);
+                    PC = stack[--sp];
+                    break;
+                
                 default:
                     debug_print("Unimplemented opcode\n");
                     break;
@@ -320,6 +326,13 @@ void emulate_instruction() {
         case 0x1:
             // 1NNN: jump to address NNN
             debug_print("Jump to NNN=0x%03X\n", NNN);
+            PC = NNN;
+            break;
+        
+        case 0x2:
+            // 2NNN: call subroutine at NNN
+            debug_print("Call subroutine at NNN=0x%03X\n", NNN);
+            stack[sp++] = PC;
             PC = NNN;
             break;
         
