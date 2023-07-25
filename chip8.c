@@ -234,6 +234,20 @@ void cap_framerate(uint64_t diff) {
 }
 
 /**
+ * Update delay and sound timers at 60 Hz
+*/
+void update_timers() {
+    // Delay timer
+    if (dt > 0) dt--;
+
+    // Sound timer
+    if (st > 0) {
+        st--;
+        // TODO: add sound
+    }
+}
+
+/**
  * Destroy SDL components and quit SDL
 */
 void clean_sdl() {
@@ -573,6 +587,8 @@ int main(int argc, char **argv) {
             // Reset draw flag
             draw_flag = false;
         }
+
+        update_timers();
     }
 
     clean_sdl();
