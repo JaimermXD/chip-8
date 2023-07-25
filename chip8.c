@@ -240,6 +240,28 @@ bool init_emulator(char *rom_name) {
     return load_rom(rom_name);
 }
 
+/**
+ * Execute current instruction
+*/
+void execute_instruction() {
+    // Fetch current opcode and increment PC for next one
+    uint16_t opcode = (memory[PC] << 8) | memory[PC + 1];
+    PC += 2;
+
+    // Decode instruction
+    uint16_t NNN = opcode & 0x0FFF;
+    uint8_t NN = opcode & 0x00FF;
+    uint8_t N = opcode & 0x000F;
+    uint8_t X = (opcode & 0x0F00) >> 8;
+    uint8_t Y = (opcode & 0x00F0) >> 4;
+
+    // Execute instruction
+    switch (opcode >> 12) {
+        default:
+            break;
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                    MAIN                                    */
 /* -------------------------------------------------------------------------- */
@@ -267,7 +289,7 @@ int main(int argc, char **argv) {
         if (state == PAUSED) continue;
 
         uint64_t start = SDL_GetPerformanceCounter();
-        // TODO: execute instructions
+        execute_instruction();
         uint64_t end = SDL_GetPerformanceCounter();
 
         cap_framerate(end - start);        
