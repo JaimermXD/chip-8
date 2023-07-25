@@ -366,6 +366,73 @@ void emulate_instruction() {
             V[X] += NN;
             break;
         
+        case 0x8:
+            switch (N) {
+                case 0x0:
+                    // 8XY0: set VX to VY
+                    debug_print("Set V%01X to V%01X\n", X, Y);
+                    V[X] = V[Y];
+                    break;
+                
+                case 0x1:
+                    // 8XY1: set VX to VX OR VY
+                    debug_print("Set V%01X to V%01X OR V%01X\n", X, X, Y);
+                    V[X] |= V[Y];
+                    break;
+                
+                case 0x2:
+                    // 8XY2: set VX to VX AND VY
+                    debug_print("Set V%01X to V%01X AND V%01X\n", X, X, Y);
+                    V[X] &= V[Y];
+                    break;
+                
+                case 0x3:
+                    // 8XY3: set VX to VX XOR VY
+                    debug_print("Set V%01X to V%01X XOR V%01X\n", X, X, Y);
+                    V[X] ^= V[Y];
+                    break;
+                
+                case 0x4:
+                    // 8XY4: add VY to VX; set VF to 1 if carry, and to 0 otherwise
+                    debug_print("Add V%01X to V%01X, set VF to %d\n", Y, X, V[X] + V[Y] > 0xFF);
+                    V[0xF] = (V[X] + V[Y] > 0xFF);
+                    V[X] += V[Y];
+                    break;
+                
+                case 0x5:
+                    // 8XY5: subtract VY from VX; set VF to 0 if borrow, and to 1 otherwise
+                    debug_print("Subtract V%01X from V%01X, set VF to %d\n", Y, X, V[X] > V[Y]);
+                    V[0xF] = V[X] > V[Y];
+                    V[X] -= V[Y];
+                    break;
+                
+                case 0x6:
+                    // 8XY6: right-shift VX by 1; set VF to LSB of VX
+                    debug_print("Right-shift V%01X by 1, set VF to %d\n", X, V[X] & 0xF);
+                    V[0xF] = V[X] & 0xF;
+                    V[X] >>= 1;
+                    break;
+                
+                case 0x7:
+                    // 8XY7: set VX to VY - VX; set VF to 0 if borrow, and to 1 otherwise
+                    debug_print("Set V%01X to V%01X - V%01X, set VF to %d\n", X, Y, X, V[Y] > V[X]);
+                    V[0xF] = V[Y] > V[X];
+                    V[X] = V[Y] - V[X];
+                    break;
+                
+                case 0xE:
+                    // 8XYE: left-shift VX by 1; set VF to MSB of VX
+                    debug_print("Left-shift V%01X by 1, set VF to %d\n", X, V[X] >> 7);
+                    V[0xF] = V[X] >> 7;
+                    V[X] <<= 1;
+                    break;
+                
+                default:
+                    debug_print("Unimplemented opcode\n");
+                    break;
+            }
+            break;
+        
         case 0x9:
             // 9XY0: skip next instruction if VX != VY
             debug_print("Skip next instruction if V%01X doesn't equal V%01X (%d)\n", X, Y, V[X] != V[Y]);
