@@ -8,6 +8,16 @@
 #include <SDL2/SDL.h>
 
 /* -------------------------------------------------------------------------- */
+/*                                   MACROS                                   */
+/* -------------------------------------------------------------------------- */
+
+#ifdef DEBUG
+#define debug_print(...) do { printf(__VA_ARGS__); } while (false)
+#else
+#define debug_print(...) do {} while (false)
+#endif
+
+/* -------------------------------------------------------------------------- */
 /*                                    DATA                                    */
 /* -------------------------------------------------------------------------- */
 
@@ -256,8 +266,10 @@ void execute_instruction() {
     uint8_t Y = (opcode & 0x00F0) >> 4;
 
     // Execute instruction
+    debug_print("[DEBUG] Opcode=0x%04X @ PC=0x%04X - ", opcode, PC - 2);
     switch (opcode >> 12) {
         default:
+            debug_print("Unimplemented opcode\n");
             break;
     }
 }
