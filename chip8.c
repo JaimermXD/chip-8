@@ -445,6 +445,12 @@ void emulate_instruction() {
             I = NNN;
             break;
         
+        case 0xB:
+            // BNNN: jump to address NNN + V0
+            debug_print("Jump to address NNN=0x%03X + V0 (0x%04X)\n", NNN, NNN + V[0x0]);
+            PC = NNN + V[0x0];
+            break;
+        
         case 0xD:
             // DXYN: draw N-height sprite at coords (VX, VY);
             // set VF to 1 if any pixel is turned off, and to 0 otherwise
