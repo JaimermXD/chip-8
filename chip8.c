@@ -273,7 +273,7 @@ void execute_instruction() {
                 case 0xE0:
                     // 00E0: clear the screen
                     debug_print("Clear the screen\n");
-                    for (int i = 0; i < sizeof(display); i++) {
+                    for (size_t i = 0; i < sizeof(display); i++) {
                         display[i] = false;
                     }
                     break;
@@ -282,6 +282,30 @@ void execute_instruction() {
                     debug_print("Unimplemented opcode\n");
                     break;
             }
+            break;
+        
+        case 0x1:
+            // 1NNN: jump to address NNN
+            debug_print("Jump to NNN=0x%03X\n", NNN);
+            PC = NNN;
+            break;
+        
+        case 0x6:
+            // 6XNN: set VX to NN
+            debug_print("Set V%01X to NN=0x%02X\n", X, NN);
+            V[X] = NN;
+            break;
+        
+        case 0x7:
+            // 7XNN: add NN to VX
+            debug_print("Add NN=0x%02X to V%01X\n", NN, X);
+            V[X] += NN;
+            break;
+        
+        case 0xA:
+            // ANNN: set I to address NNN
+            debug_print("Set I to NNN=0x%03X\n", NNN);
+            I = NNN;
             break;
 
         default:
