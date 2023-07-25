@@ -507,6 +507,26 @@ void emulate_instruction() {
             }
 
             break;
+        
+        case 0xE:
+            switch (NN) {
+                case 0x9E:
+                    // EX9E: skip next instruction if key in VX is pressed
+                    debug_print("Skip next instruction if key in V%01X is pressed (%d)\n", X, keypad[V[X]]);
+                    if (keypad[V[X]]) PC += 2;
+                    break;
+                
+                case 0xA1:
+                    // EXA1: skip next instruction if key in VX isn't pressed
+                    debug_print("Skip next instruction if key in V%01X isn't pressed (%d)\n", X, !keypad[V[X]]);
+                    if (!keypad[V[X]]) PC += 2;
+                    break;
+
+                default:
+                    debug_print("Unimplemented opcode\n");
+                    break;
+            }
+            break;
 
         default:
             debug_print("Unimplemented opcode\n");
