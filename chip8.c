@@ -144,8 +144,6 @@ void handle_events() {
     SDL_Event event;
 
     while (SDL_PollEvent(&event)) {
-        const uint8_t *keypad_state = SDL_GetKeyboardState(NULL);
-
         switch (event.type) {
             case SDL_QUIT:
                 // Quit emulator
@@ -169,6 +167,49 @@ void handle_events() {
                             printf("[INFO] Paused\n");
                         }
                         break;
+                    
+                    // Keypad mappings
+                    case SDL_SCANCODE_1: keypad[0x1] = true; break;
+                    case SDL_SCANCODE_2: keypad[0x2] = true; break;
+                    case SDL_SCANCODE_3: keypad[0x3] = true; break;
+                    case SDL_SCANCODE_4: keypad[0xC] = true; break;
+                    case SDL_SCANCODE_Q: keypad[0x4] = true; break;
+                    case SDL_SCANCODE_W: keypad[0x5] = true; break;
+                    case SDL_SCANCODE_E: keypad[0x6] = true; break;
+                    case SDL_SCANCODE_R: keypad[0xD] = true; break;
+                    case SDL_SCANCODE_A: keypad[0x7] = true; break;
+                    case SDL_SCANCODE_S: keypad[0x8] = true; break;
+                    case SDL_SCANCODE_D: keypad[0x9] = true; break;
+                    case SDL_SCANCODE_F: keypad[0xE] = true; break;
+                    case SDL_SCANCODE_Z: keypad[0xA] = true; break;
+                    case SDL_SCANCODE_X: keypad[0x0] = true; break;
+                    case SDL_SCANCODE_C: keypad[0xB] = true; break;
+                    case SDL_SCANCODE_V: keypad[0xF] = true; break;
+
+                    default:
+                        break;
+                }
+                break;
+            
+            case SDL_KEYUP:
+                switch (event.key.keysym.scancode) {
+                    // Keypad mappings
+                    case SDL_SCANCODE_1: keypad[0x1] = false; break;
+                    case SDL_SCANCODE_2: keypad[0x2] = false; break;
+                    case SDL_SCANCODE_3: keypad[0x3] = false; break;
+                    case SDL_SCANCODE_4: keypad[0xC] = false; break;
+                    case SDL_SCANCODE_Q: keypad[0x4] = false; break;
+                    case SDL_SCANCODE_W: keypad[0x5] = false; break;
+                    case SDL_SCANCODE_E: keypad[0x6] = false; break;
+                    case SDL_SCANCODE_R: keypad[0xD] = false; break;
+                    case SDL_SCANCODE_A: keypad[0x7] = false; break;
+                    case SDL_SCANCODE_S: keypad[0x8] = false; break;
+                    case SDL_SCANCODE_D: keypad[0x9] = false; break;
+                    case SDL_SCANCODE_F: keypad[0xE] = false; break;
+                    case SDL_SCANCODE_Z: keypad[0xA] = false; break;
+                    case SDL_SCANCODE_X: keypad[0x0] = false; break;
+                    case SDL_SCANCODE_C: keypad[0xB] = false; break;
+                    case SDL_SCANCODE_V: keypad[0xF] = false; break;
 
                     default:
                         break;
@@ -176,11 +217,6 @@ void handle_events() {
                 break;
             
             default:
-                // Keypad mappings
-                for (int i = 0; i < 16; i++) {
-                    keypad[i] = keypad_state[keymappings[i]];
-                }
-
                 break;
         }
     }
@@ -552,13 +588,27 @@ void emulate_instruction() {
                     // FX0A: wait for keypress; store it in VX
                     debug_print("Wait for keypress and store it in V%01X\n", X);
 
-                    PC -= 2;
+                    static bool key_pressed = false;
+                    static uint8_t key = 0xFF;
 
-                    for (int i = 0; i < 16; i++) {
+                    // Check for keypress
+                    for (uint8_t i = 0; i < 16 && key == 0xFF; i++) {
                         if (keypad[i]) {
-                            V[X] = i;
-                            PC += 2;
+                            key = i;
+                            key_pressed = true;
                             break;
+                        }
+                    }
+
+                    // If no key pressed, execute same instruction
+                    if (!key_pressed) PC -= 2;
+                    else {
+                        // If key is still pressed, wait until it's released
+                        if (keypad[key]) PC -= 2;
+                        else {
+                            V[X] = key;
+                            key = 0xFF;
+                            key_pressed = false;
                         }
                     }
 
