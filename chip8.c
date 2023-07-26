@@ -42,12 +42,6 @@ const uint8_t font[] = {
     0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
     0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 };
-const SDL_Scancode keymappings[] = {
-    SDL_SCANCODE_1, SDL_SCANCODE_2, SDL_SCANCODE_3, SDL_SCANCODE_4,
-    SDL_SCANCODE_Q, SDL_SCANCODE_W, SDL_SCANCODE_E, SDL_SCANCODE_R,
-    SDL_SCANCODE_A, SDL_SCANCODE_S, SDL_SCANCODE_D, SDL_SCANCODE_F,
-    SDL_SCANCODE_Z, SDL_SCANCODE_X, SDL_SCANCODE_C, SDL_SCANCODE_V
-};
 
 // Types
 typedef enum {
@@ -64,10 +58,15 @@ uint32_t bg_color = 0x00000000;
 uint32_t fg_color = 0xFFFFFFFF;
 bool pixel_outline = false;
 uint32_t insts_per_sec = 700;
+uint32_t sound_freq = 440;
+uint32_t audio_sample_rate = 44100;
+int16_t volume = 3000;
 
 // SDL
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
+SDL_AudioSpec desired, obtained;
+SDL_AudioDeviceID audio;
 
 // Emulator
 state_t state = RUNNING;
@@ -106,6 +105,26 @@ bool set_config(int argc, char **argv) {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * SDL audio device callback function
+ * @param userdata User data
+ * @param stream Pointer to the audio data buffer
+ * @param len Length of the buffer
+*/
+void audio_callback(void *userdata, uint8_t *stream, int len) {
+    (void)userdata;
+
+    int16_t *audio_data = (int16_t *)stream;
+    static uint32_t sample_index = 0;
+    const int32_t sound_period = audio_sample_rate / sound_freq;
+    const int32_t half_sound_period = sound_period / 2;
+
+    // Fill audio data buffer 2 bytes at a time
+    for (int i = 0; i < len / 2; i++) {
+        audio_data[i] = ((sample_index++ / half_sound_period) % 2) ? volume : -volume;
+    }
+}
+
+/**
  * Initialize SDL subsystems and components
  * @return Whether initialization was successful
 */
@@ -131,6 +150,25 @@ bool init_sdl() {
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
         fprintf(stderr, "[ERROR] Unable to create renderer: %s\n", SDL_GetError());
+        return false;
+    }
+
+    desired = (SDL_AudioSpec){
+        .freq = audio_sample_rate,
+        .format = AUDIO_S16LSB,
+        .channels = 1,
+        .samples = 512,
+        .callback = audio_callback,
+    };
+
+    audio = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0);
+    if (!audio) {
+        fprintf(stderr, "[ERROR] Unable to open audio device: %s\n", SDL_GetError());
+        return false;
+    }
+
+    if (desired.format != obtained.format || desired.channels != obtained.channels) {
+        fprintf(stderr, "[ERROR] Unable to get desired audio spec\n");
         return false;
     }
 
@@ -279,7 +317,9 @@ void update_timers() {
     // Sound timer
     if (ST > 0) {
         ST--;
-        // TODO: add sound
+        SDL_PauseAudioDevice(audio, false);
+    } else {
+        SDL_PauseAudioDevice(audio, true);
     }
 }
 
@@ -289,6 +329,7 @@ void update_timers() {
 void clean_sdl() {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
+    SDL_CloseAudioDevice(audio);
     SDL_Quit();
 }
 
