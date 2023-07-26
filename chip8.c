@@ -84,6 +84,12 @@ bool keypad[16] = {false};
 char *rom = NULL;
 
 /* -------------------------------------------------------------------------- */
+/*                                 PROTOTYPES                                 */
+/* -------------------------------------------------------------------------- */
+
+bool init_emulator(char *rom_name);
+
+/* -------------------------------------------------------------------------- */
 /*                                   CONFIG                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -204,6 +210,11 @@ void handle_events() {
                             state = PAUSED;
                             printf("[INFO] Paused\n");
                         }
+                        break;
+                    
+                    case SDL_SCANCODE_BACKSPACE:
+                        // Reset emulator for current ROM
+                        init_emulator(rom);
                         break;
                     
                     // Keypad mappings
@@ -381,8 +392,17 @@ bool load_rom(char *rom_name) {
  * @return Whether initialization was successful
 */
 bool init_emulator(char *rom_name) {
-    // Initialize random number generator
-    srand(time(NULL));
+    // Reset emulator
+    memset(&memory[0], 0, sizeof(memory));
+    memset(&V[0], 0, sizeof(V));
+    memset(&stack[0], 0, sizeof(stack));    
+    memset(&display[0], 0, sizeof(display));
+    sp = 0;
+    PC = entry_point;
+    I = 0;
+    DT = 0;
+    ST = 0;
+    draw_flag = false;
 
     // Load font
     memcpy(&memory[0], font, sizeof(font));
@@ -735,6 +755,9 @@ int main(int argc, char **argv) {
     if (!set_config(argc, argv)) return EXIT_FAILURE;
     if (!init_emulator(argv[1])) return EXIT_FAILURE;
     if (!init_sdl()) return EXIT_FAILURE;
+
+    // Initialize random number generator
+    srand(time(NULL));
 
     // Main loop
     while (state != QUIT) {
