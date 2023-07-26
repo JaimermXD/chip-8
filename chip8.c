@@ -415,6 +415,7 @@ void emulate_instruction() {
                     // 00E0: clear the screen
                     debug_print("Clear the screen\n");
                     memset(&display[0], false, sizeof(display));
+                    draw_flag = true;
                     break;
                 
                 case 0xEE:
