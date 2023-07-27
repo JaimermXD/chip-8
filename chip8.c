@@ -61,7 +61,7 @@ uint32_t insts_per_sec = 700;
 uint32_t sound_freq = 440;
 uint32_t audio_sample_rate = 44100;
 int16_t volume = 3000;
-float color_lerp_rate = 0.6f;
+float color_lerp_rate = 0.75f;
 
 // SDL
 SDL_Window *window = NULL;
@@ -90,6 +90,7 @@ char *rom = NULL;
 /* -------------------------------------------------------------------------- */
 
 bool init_emulator(char *rom_name);
+void update_screen();
 
 /* -------------------------------------------------------------------------- */
 /*                                   CONFIG                                   */
@@ -217,6 +218,32 @@ void handle_events() {
                     case SDL_SCANCODE_BACKSPACE:
                         // Reset emulator for current ROM
                         init_emulator(rom);
+                        break;
+                    
+                    case SDL_SCANCODE_U:
+                        // Decrease lerp rate
+                        if (color_lerp_rate > 0.05) color_lerp_rate -= 0.05;
+                        break;
+
+                    case SDL_SCANCODE_I:
+                        // Increase lerp rate
+                        if (color_lerp_rate < 1) color_lerp_rate += 0.05;
+                        break;
+
+                    case SDL_SCANCODE_O:
+                        // Decrease volume
+                        if (volume > 0) volume -= 500;
+                        break;
+
+                    case SDL_SCANCODE_P:
+                        // Increase volme
+                        if (volume < INT16_MAX) volume += 500;
+                        break;
+                    
+                    case SDL_SCANCODE_L:
+                        // Toggle pixel outline
+                        pixel_outline = !pixel_outline;
+                        update_screen();
                         break;
                     
                     // Keypad mappings
