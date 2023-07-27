@@ -142,10 +142,10 @@ bool set_config(int argc, char **argv) {
                 printf("Usage: %s [...OPTIONS] ROM_NAME\n", argv[0]);
                 printf("\n");
                 printf("Options:\n");
-                printf("  -s NUM\tSet pixel scale factor\n");
-                printf("  -i NUM\tSet instructions per second\n");
-                printf("  -b RGBA\tSet background color (hex)\n");
-                printf("  -f RGBA\tSet foreground color (hex)\n");
+                printf("  -s NUM\tSet pixel scale factor (default: 15)\n");
+                printf("  -i NUM\tSet instructions per second (default: 700)\n");
+                printf("  -b RGBA\tSet background color in hex (default: 00000000)\n");
+                printf("  -f RGBA\tSet foreground color in hex (default: FFFFFFFF)\n");
                 exit(EXIT_SUCCESS);
             
             case ':':
