@@ -61,6 +61,7 @@ uint32_t insts_per_sec = 700;
 uint32_t sound_freq = 440;
 uint32_t audio_sample_rate = 44100;
 int16_t volume = 3000;
+float color_lerp_rate = 0.6f;
 
 // SDL
 SDL_Window *window = NULL;
@@ -78,9 +79,10 @@ uint16_t PC = entry_point;
 uint16_t I = 0;
 uint8_t DT = 0;
 uint8_t ST = 0;
-bool draw_flag = false;
+uint32_t pixel_colors[64 * 32] = {0};
 bool display[64 * 32] = {false}; // TODO: make display depend on width and height
 bool keypad[16] = {false};
+bool draw_flag = false;
 char *rom = NULL;
 
 /* -------------------------------------------------------------------------- */
@@ -272,33 +274,85 @@ void handle_events() {
 }
 
 /**
+ * Extract color components in RGBA format
+ * @param color RGBA color
+ * @param r Pointer to R component
+ * @param g Pointer to G component
+ * @param b Pointer to B component
+ * @param a Pointer to A component
+*/
+void extract_color(uint32_t color, uint8_t *r, uint8_t *g, uint8_t *b, uint8_t *a) {
+    *r = (color >> 24) & 0xFF;
+    *g = (color >> 16) & 0xFF;
+    *b = (color >>  8) & 0xFF;
+    *a = (color >>  0) & 0xFF;
+}
+
+/**
+ * Linear interpolation between two colors
+ * @param start_color Initial color
+ * @param end_color Final color
+ * @param t Color lerp rate
+ * @return Intermediate color
+*/
+uint32_t color_lerp(uint32_t start_color, uint32_t end_color, float t) {
+    // Extract start color components
+    uint8_t s_r, s_g, s_b, s_a;
+    extract_color(start_color, &s_r, &s_g, &s_b, &s_a);
+
+    // Extract end color components
+    uint8_t e_r, e_g, e_b, e_a;
+    extract_color(end_color, &e_r, &e_g, &e_b, &e_a);
+
+    // Get lerped color components
+    uint8_t l_r = ((1 - t) * s_r) + (t * e_r);
+    uint8_t l_g = ((1 - t) * s_g) + (t * e_g);
+    uint8_t l_b = ((1 - t) * s_b) + (t * e_b);
+    uint8_t l_a = ((1 - t) * s_a) + (t * e_a);
+
+    return (l_r << 24) | (l_g << 16) | (l_b << 8) | l_a;
+}
+
+/**
  * Draw display contents to the screen
 */
 void update_screen() {
     SDL_Rect rect = { .x = 0, .y = 0, .w = scale, .h = scale };
 
     // Extract background color components
-    const uint8_t bg_r = (bg_color >> 24) & 0xFF;
-    const uint8_t bg_g = (bg_color >> 16) & 0xFF;
-    const uint8_t bg_b = (bg_color >>  8) & 0xFF;
-    const uint8_t bg_a = (bg_color >>  0) & 0xFF;
+    uint8_t bg_r, bg_g, bg_b, bg_a;
+    extract_color(bg_color, &bg_r, &bg_g, &bg_b, &bg_a);
 
     // Extract foreground color components
-    const uint8_t fg_r = (fg_color >> 24) & 0xFF;
-    const uint8_t fg_g = (fg_color >> 16) & 0xFF;
-    const uint8_t fg_b = (fg_color >>  8) & 0xFF;
-    const uint8_t fg_a = (fg_color >>  0) & 0xFF;
+    uint8_t fg_r, fg_g, fg_b, fg_a;
+    extract_color(fg_color, &fg_r, &fg_g, &fg_b, &fg_a);
 
     // Loop through display pixels
     for (uint32_t i = 0; i < sizeof(display); i++) {
         rect.x = (i % width) * scale;
         rect.y = (i / width) * scale;
 
-        if (display[i]) SDL_SetRenderDrawColor(renderer, fg_r, fg_g, fg_b, fg_a);
-        else SDL_SetRenderDrawColor(renderer, bg_r, bg_g, bg_b, bg_a);
+        if (display[i]) {
+            // Pixel on, lerp towards foreground color if not already there
+            if (pixel_colors[i] != fg_color) {
+                pixel_colors[i] = color_lerp(pixel_colors[i], fg_color, color_lerp_rate);
+            }
+        } else {
+            // Pixel off, lerp towards background color if not already there
+            if (pixel_colors[i] != bg_color) {
+                pixel_colors[i] = color_lerp(pixel_colors[i], bg_color, color_lerp_rate);
+            }
+        }
 
+        // Extract current pixel color components
+        uint8_t r, g, b, a;
+        extract_color(pixel_colors[i], &r, &g, &b, &a);
+
+        // Update color and draw pixel
+        SDL_SetRenderDrawColor(renderer, r, g, b, a);
         SDL_RenderFillRect(renderer, &rect);
 
+        // Draw pixel outline if enabled
         if (pixel_outline) {
             SDL_SetRenderDrawColor(renderer, bg_r, bg_g, bg_b, bg_a);
             SDL_RenderDrawRect(renderer, &rect);
