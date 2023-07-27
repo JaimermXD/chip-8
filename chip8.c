@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <SDL2/SDL.h>
 
@@ -56,6 +57,7 @@ uint32_t height = 32;
 uint32_t scale = 15;
 uint32_t bg_color = 0x00000000;
 uint32_t fg_color = 0xFFFFFFFF;
+char *args_rom = NULL;
 bool pixel_outline = false;
 uint32_t insts_per_sec = 700;
 uint32_t sound_freq = 440;
@@ -80,7 +82,7 @@ uint16_t I = 0;
 uint8_t DT = 0;
 uint8_t ST = 0;
 uint32_t pixel_colors[64 * 32] = {0};
-bool display[64 * 32] = {false}; // TODO: make display depend on width and height
+bool display[64 * 32] = {false};
 bool keypad[16] = {false};
 bool draw_flag = false;
 char *rom = NULL;
@@ -98,14 +100,79 @@ void update_screen();
 
 /**
  * Set up emulator config from args
+ * @param argc Number of args
+ * @param argv Args list
  * @return Whether setup was successful
 */
 bool set_config(int argc, char **argv) {
-    // Override defaults
-    for (int i = 1; i < argc; i++) {
-        (void)argv[i];
+    // Options
+    int opt;
+    while ((opt = getopt(argc, argv, ":s:i:b:f:h")) != -1) {
+        switch (opt) {
+            case 's':
+                // Scale
+                scale = (uint32_t)strtol(optarg, NULL, 10);
+                if (scale == 0) {
+                    fprintf(stderr, "[ERROR] Invalid scale value\n");
+                    return false;
+                }
+                break;
+            
+            case 'i':
+                // Instructions per second
+                insts_per_sec = (uint32_t)strtol(optarg, NULL, 10);
+                if (insts_per_sec == 0) {
+                    fprintf(stderr, "[ERROR] Invalid instructions per second value\n");
+                    return false;
+                }
+                break;
+            
+            case 'b':
+                // Background color
+                bg_color = (uint32_t)strtol(optarg, NULL, 16);
+                break;
+            
+            case 'f':
+                // Foreground color
+                fg_color = (uint32_t)strtol(optarg, NULL, 16);
+                break;
+            
+            case 'h':
+                // Print help
+                printf("Usage: %s [...OPTIONS] ROM_NAME\n", argv[0]);
+                printf("\n");
+                printf("Options:\n");
+                printf("  -s NUM\tSet pixel scale factor\n");
+                printf("  -i NUM\tSet instructions per second\n");
+                printf("  -b RGBA\tSet background color (hex)\n");
+                printf("  -f RGBA\tSet foreground color (hex)\n");
+                exit(EXIT_SUCCESS);
+            
+            case ':':
+                fprintf(stderr, "[ERROR] Option requires a value\n");
+                return false;
+            
+            case '?':
+                fprintf(stderr, "[ERROR] Unknown option\n");
+                return false;
+        }
     }
 
+    // Args
+    int args_len = 0;
+    int arg_pos;
+    for (; optind < argc; optind++) {
+        if (args_len == 0) arg_pos = optind;
+        args_len++;
+    }
+
+    if (args_len != 1) {
+        fprintf(stderr, "[ERROR] Invalid number of args provided\n");
+        return false;
+    }
+
+    // Set ROM name
+    args_rom = argv[arg_pos];
     return true;
 }
 
@@ -828,13 +895,8 @@ void emulate_instruction() {
  * @return Exit code
 */
 int main(int argc, char **argv) {
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s ROM_NAME\n", argv[0]);
-        return EXIT_FAILURE;
-    }
-
     if (!set_config(argc, argv)) return EXIT_FAILURE;
-    if (!init_emulator(argv[1])) return EXIT_FAILURE;
+    if (!init_emulator(args_rom)) return EXIT_FAILURE;
     if (!init_sdl()) return EXIT_FAILURE;
 
     // Initialize random number generator
