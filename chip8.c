@@ -111,7 +111,7 @@ bool set_config(int argc, char **argv) {
         switch (opt) {
             case 's':
                 // Scale
-                scale = (uint32_t)strtol(optarg, NULL, 10);
+                scale = (uint32_t)strtoul(optarg, NULL, 10);
                 if (scale == 0) {
                     fprintf(stderr, "[ERROR] Invalid scale value\n");
                     return false;
@@ -120,7 +120,7 @@ bool set_config(int argc, char **argv) {
             
             case 'i':
                 // Instructions per second
-                insts_per_sec = (uint32_t)strtol(optarg, NULL, 10);
+                insts_per_sec = (uint32_t)strtoul(optarg, NULL, 10);
                 if (insts_per_sec == 0) {
                     fprintf(stderr, "[ERROR] Invalid instructions per second value\n");
                     return false;
@@ -129,12 +129,12 @@ bool set_config(int argc, char **argv) {
             
             case 'b':
                 // Background color
-                bg_color = (uint32_t)strtol(optarg, NULL, 16);
+                bg_color = (uint32_t)strtoul(optarg, NULL, 16);
                 break;
             
             case 'f':
                 // Foreground color
-                fg_color = (uint32_t)strtol(optarg, NULL, 16);
+                fg_color = (uint32_t)strtoul(optarg, NULL, 16);
                 break;
             
             case 'h':
